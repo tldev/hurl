@@ -1,0 +1,24 @@
+name: hurl
+version: "1.0"
+author: Tom J. <tjohnell@handy.com>
+about: Make signed requests easily!
+args:
+    - url:
+        required: true
+        index: 1
+    - request:
+        short: X
+        long: request
+        value_name: COMMAND
+        help: Specify request command to use
+        takes_value: true
+    - location:
+        short: L
+        long: location
+        help: Follow redirects (H)
+        takes_value: false
+    - partner:
+        long: partner
+        help: Orginating partner name
+        takes_value: true
+
