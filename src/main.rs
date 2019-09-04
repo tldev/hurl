@@ -16,7 +16,7 @@ use openssl::hash::MessageDigest;
 use openssl::sign::{Signer};
 use openssl::pkey::PKey;
 use std::time::SystemTime;
-use data_encoding::HEXUPPER;
+use data_encoding::BASE64;
 
 #[cfg(feature = "yaml")]
 fn main() {
@@ -40,20 +40,26 @@ fn main() {
 
     if matches.is_present("partner") {
         let partner = matches.value_of("partner").unwrap().to_string();
-        let result = sign_request(easy, &partner, &url, &request);
-        match result {
-            Ok(()) => (),
-            Err(s) => println!("{}", s)
-        }
+        let headers = sign_request(&partner, &url, &request).unwrap();
+        easy.http_headers(headers).unwrap();
     }
 
-    // easy.perform().unwrap();
+    if matches.is_present("header") {
+        let passed_headers: Vec<_> = matches.values_of("header").unwrap().collect();
+        let mut headers = List::new();
+        for header in &passed_headers {
+            println!("{}", header);
+            headers.append(header).unwrap();
+        }
+        easy.http_headers(headers).unwrap();
+    }
+
+    easy.perform().unwrap();
 
     // println!("{}", easy.response_code().unwrap()); 
 }
 
-fn sign_request<'a>(mut easy: Easy, partner: &'a str, url: &str, method: &str) -> Result<(), &'a str> {
-    let sig = "";
+fn sign_request<'a>(partner: &'a str, url: &str, method: &str) -> Result<List, &'a str> {
     let folder = repos_folder()?;
     let config_path = find_config_path(folder, partner)?;
     let config_contents = read_config(config_path)?;
@@ -68,8 +74,7 @@ fn sign_request<'a>(mut easy: Easy, partner: &'a str, url: &str, method: &str) -
         Ok(unix) => unix.as_secs(),
         Err(_) => 0
     };
-    let data = format!("{}\n{}\n{}\n{}\n{}", partner, url, method.to_lowercase(), unix, "");
-    println!("{}", data);
+    let data = format!("{}\\n{}\\n{}\\n{}\\n{}", partner, url, method.to_lowercase(), unix, "");
     signer.update(data.as_bytes()).unwrap();
     let signature = signer.sign_to_vec().unwrap();
     let sig_ref: &[u8] = &signature; // c: &[u8]
@@ -77,15 +82,9 @@ fn sign_request<'a>(mut easy: Easy, partner: &'a str, url: &str, method: &str) -
     let mut list = List::new();
     list.append(&format!("HDY-PARTNER-ID: {}", partner)).unwrap();
     list.append(&format!("HDY-TIMESTAMP: {}", unix)).unwrap();
-    list.append(&format!("HDY-SIGNATURE: {}", HEXUPPER.encode(sig_ref))).unwrap();
-    println!("{:?}", HEXUPPER.encode(sig_ref));
-    easy.http_headers(list).unwrap();
+    list.append(&format!("HDY-SIGNATURE: {}", BASE64.encode(sig_ref))).unwrap();
 
-
-
-    // base64(rsa_sha256(PARTNER_ID + "\n" + URL + "\n" + HTTP_METHOD + "\n" + TIMESTAMP + "\n" + PAYLOAD))
-
-    return Ok(());
+    return Ok(list);
 }
 
 fn build_rsa_pkey(pem_key: &[u8]) -> Result<PKey<openssl::pkey::Private>, &'static str> {

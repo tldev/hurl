@@ -21,4 +21,10 @@ args:
         long: partner
         help: Orginating partner name
         takes_value: true
+    - header:
+        long: header
+        short: H
+        value_name: LINE
+        multiple: true
+        number_of_values: 1
 
