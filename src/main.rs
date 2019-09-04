@@ -55,8 +55,6 @@ fn main() {
     }
 
     easy.perform().unwrap();
-
-    // println!("{}", easy.response_code().unwrap()); 
 }
 
 fn sign_request<'a>(partner: &'a str, url: &str, method: &str) -> Result<List, &'a str> {
