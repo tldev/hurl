@@ -35,29 +35,32 @@ fn main() {
     }).unwrap();
 
     if matches.is_present("location") {
-        easy.follow_location(true);
+        let _ = easy.follow_location(true);
     }
 
+    let mut headers: Vec<String> = vec![String::new(); 30];
     if matches.is_present("partner") {
         let partner = matches.value_of("partner").unwrap().to_string();
-        let headers = sign_request(&partner, &url, &request).unwrap();
-        easy.http_headers(headers).unwrap();
+        sign_request(&mut headers, &partner, &url, &request).unwrap();
     }
 
     if matches.is_present("header") {
         let passed_headers: Vec<_> = matches.values_of("header").unwrap().collect();
-        let mut headers = List::new();
         for header in &passed_headers {
-            println!("{}", header);
-            headers.append(header).unwrap();
+            headers.push(header.to_string());
         }
-        easy.http_headers(headers).unwrap();
     }
+
+    let mut real_headers = List::new();
+    for header in headers {
+        real_headers.append(&header).unwrap();
+    }
+    let _ = easy.http_headers(real_headers);
 
     easy.perform().unwrap();
 }
 
-fn sign_request<'a>(partner: &'a str, url: &str, method: &str) -> Result<List, &'a str> {
+fn sign_request<'a, 'b>(headers: &'a mut Vec<String>, partner: &'b str, url: &str, method: &str) -> Result<&'a Vec<String>, &'b str> {
     let folder = repos_folder()?;
     let config_path = find_config_path(folder, partner)?;
     let config_contents = read_config(config_path)?;
@@ -76,13 +79,12 @@ fn sign_request<'a>(partner: &'a str, url: &str, method: &str) -> Result<List, &
     signer.update(data.as_bytes()).unwrap();
     let signature = signer.sign_to_vec().unwrap();
     let sig_ref: &[u8] = &signature; // c: &[u8]
-    
-    let mut list = List::new();
-    list.append(&format!("HDY-PARTNER-ID: {}", partner)).unwrap();
-    list.append(&format!("HDY-TIMESTAMP: {}", unix)).unwrap();
-    list.append(&format!("HDY-SIGNATURE: {}", BASE64.encode(sig_ref))).unwrap();
 
-    return Ok(list);
+    headers.push(format!("HDY-PARTNER-ID: {}", partner));
+    headers.push(format!("HDY-TIMESTAMP: {}", unix));
+    headers.push(format!("HDY-SIGNATURE: {}", BASE64.encode(sig_ref)));
+
+    return Ok(headers);
 }
 
 fn build_rsa_pkey(pem_key: &[u8]) -> Result<PKey<openssl::pkey::Private>, &'static str> {
