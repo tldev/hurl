@@ -29,6 +29,12 @@ fn main() {
 
     let mut easy = Easy::new();
     easy.url(url).unwrap();
+    if request.to_lowercase() == "post" {
+        easy.post(true).unwrap();
+    } else if request.to_lowercase() == "put" {
+        easy.put(true).unwrap();
+    }
+
     easy.write_function(|data| {
         stdout().write_all(data).unwrap();
         Ok(data.len())
